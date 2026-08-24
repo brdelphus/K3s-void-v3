@@ -1,4 +1,4 @@
-# OCI (Oracle Cloud Infrastructure) configuration for k3s-cluster-v3
+# OCI (Oracle Cloud Infrastructure) configuration for K3s-void-v3
 # Copy this file to env-vars.txt and fill in your values.
 # NEVER commit env-vars.txt — it contains credentials.
 # See README "Credentials" for step-by-step on generating each value.

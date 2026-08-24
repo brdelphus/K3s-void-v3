@@ -367,7 +367,7 @@ variable "k3s_version" {
   default     = ""
 }
 
-# --- k3s-cluster-v3: join ---
+# --- K3s-void-v3: join ---
 variable "k3s_join_token" {
   description = "K3s join token — vem do ambiente (.env), NUNCA versionar"
   type        = string
@@ -462,4 +462,3 @@ variable "psa_exempted_namespaces" {
     "dns"
   ]
 }
-

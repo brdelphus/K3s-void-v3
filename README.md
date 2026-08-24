@@ -171,7 +171,7 @@ terraform apply
 ## 📁 Project Structure
 
 ```
-k3s-cluster-v3/
+k3s-void-v3/
 ├── main.tf                    # Main Terraform configuration
 ├── variables.tf               # Terraform variables
 ├── terraform.tfvars.example  # Example cluster configuration

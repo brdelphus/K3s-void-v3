@@ -2,7 +2,7 @@
 # =============================================================================
 # K3s SERVER adicional (HA) no cluster — Void Linux (OpenRC)
 # =============================================================================
-# Projeto: ~/projects/k3s-cluster-v3 (terraform)
+# Projeto: ~/projects/k3s-void-v3 (terraform)
 # Uso:     templatefile do main.tf -> cloud-init do rmaster-XX (master HA)
 #
 # v3.3 (22/ago/2026) — fixes pro join HA que falhava 2x no rmaster-01:
