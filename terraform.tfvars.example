@@ -1,0 +1,59 @@
+# k3s-cluster-v3 — example configuration
+# Copy to terraform.tfvars and adjust for your tenancy.
+# OCI credentials come from env vars (source env-vars.txt) — see env-vars.txt.example
+
+system_username = "void"
+
+master_count = 2
+worker_count = 2
+
+master_shape     = "VM.Standard.A1.Flex"
+worker_shape     = "VM.Standard.A1.Flex"
+master_shape_config = {
+  ocpus         = 1
+  memory_in_gbs = 6
+}
+worker_ocpus     = 1
+worker_memory_gb = 6
+
+master_prefix = "rmaster"
+worker_prefix = "rworker"
+
+master_hostname_prefix = "rmaster"
+worker_hostname_prefix = "rworker"
+
+# VCN and subnet created by this module — pick CIDRs that don't overlap
+# with anything you plan to peer with
+vcn_cidr        = "10.2.0.0/16"
+subnet_cidr     = "10.2.1.0/28"
+vcn_display_name = "k3s-cluster-v3-vcn"
+vcn_dns_label    = "k3sv3cluster"
+subnet_display_name = "k3s-v3-subnet"
+subnet_dns_label    = "k3sv3subnet"
+
+master_private_ips = ["10.2.1.3", "10.2.1.7"]
+worker_private_ips = ["10.2.1.4", "10.2.1.5"]
+
+# Filled in after the first apply (from the OCI console or terraform output)
+master_external_ipv4_addresses = ["0.0.0.0", "0.0.0.0"]
+worker_external_ipv4_addresses = ["0.0.0.0", "0.0.0.0"]
+master_external_ipv6_addresses = ["::", "::"]
+worker_external_ipv6_addresses = ["::", "::"]
+
+# Optional: static private IPv6 (nodes get them via SLAAC — informative only)
+master_private_ipv6_addresses = ["2001:db8::3", "2001:db8::7"]
+worker_private_ipv6_addresses = ["2001:db8::4", "2001:db8::5"]
+
+# Optional VCN peering — CIDR of the remote VCN and its LPG OCID
+delphus_vcn_cidr = "10.99.0.0/16"
+delphus_lpg_id   = "ocid1.localpeeringgateway.oc1..your-lpg-id"
+
+# Void Linux OCI image imported into your tenancy (display name of the build)
+void_oci_image_display_name = "void-oci-aarch64-20260822"
+
+# First master (seed) address: the other masters and workers join it
+k3s_server_url = "https://10.2.1.3:6443"
+
+# join (default, registers in the cluster) or test (installs k3s without
+# contacting the master — timing validation in destroy/apply cycles)
+k3s_join_mode = "join"

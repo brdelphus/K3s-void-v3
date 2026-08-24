@@ -1,0 +1,246 @@
+# K3s Cluster on Oracle Cloud Infrastructure (OCI)
+
+A production-ready K3s Kubernetes cluster deployment on Oracle Cloud Infrastructure with Flannel CNI, CIS hardening, and dual-stack networking support.
+
+## 🚀 Features
+
+- **K3s Lightweight Kubernetes** - Fast, certified Kubernetes distribution
+- **Oracle Cloud Infrastructure** - ARM-based VM.Standard.A1.Flex instances
+- **Flannel CNI** - Lightweight networking with VXLAN backend
+- **CIS Hardening** - Security compliance with Pod Security Standards
+- **Dual-Stack Networking** - IPv4 and IPv6 support
+- **Oracle Cloud Firewall Integration** - Automatic firewall management
+- **Automated Deployment** - One-command cluster deployment and teardown
+
+## 📋 Prerequisites
+
+### Required Tools
+- [Terraform](https://www.terraform.io/) >= 1.0
+- [Oracle Cloud CLI](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cliconcepts.htm)
+- SSH client
+
+### Oracle Cloud Infrastructure Setup
+1. **OCI Account** with sufficient compute quotas
+2. **VCN and Subnet** (created by this module; optionally peer with another VCN)
+3. **API Keys** configured for Terraform
+
+## 🔧 Configuration
+
+### 1. Environment Variables
+Copy and configure your OCI credentials:
+```bash
+cp env-vars.txt.example env-vars.txt
+# Edit env-vars.txt with your actual OCI credentials
+```
+
+Required variables:
+- `TF_VAR_tenancy_ocid` - Your OCI tenancy OCID
+- `TF_VAR_user_ocid` - Your OCI user OCID
+- `TF_VAR_private_key_path` - Path to your OCI private key
+- `TF_VAR_fingerprint` - Your OCI key fingerprint
+- `TF_VAR_compartment_id` - Target compartment OCID
+- `TF_VAR_ssh_public_key` - SSH public key for instance access
+- `TF_VAR_k3s_join_token` - Secure token for joining the K3s cluster (never commit)
+
+### 2. Terraform Variables
+Copy and configure cluster settings:
+```bash
+cp terraform.tfvars.example terraform.tfvars
+# Edit terraform.tfvars with your cluster configuration
+```
+
+Key variables:
+- `master_private_ips` / `worker_private_ips` - Static private IPs for the nodes
+- `master_external_ipv4_addresses` - External IP addresses for master nodes
+- `worker_external_ipv4_addresses` - External IP addresses for worker nodes
+- `k3s_server_url` - URL of the seed master that nodes join
+- `k3s_join_mode` - `join` (register in cluster) or `test` (install without contacting the master)
+- `void_oci_image_display_name` - Void Linux OCI image imported into your tenancy
+- `system_username` - Username for SSH access
+
+## 🚀 Deployment
+
+### Quick Start
+```bash
+# 1. Source environment variables
+source env-vars.txt
+
+# 2. Run deployment script
+./deploy-enhanced.sh
+```
+
+### Manual Deployment
+```bash
+# 1. Source environment variables
+source env-vars.txt
+
+# 2. Initialize Terraform backend
+terraform init
+
+# 3. Plan deployment
+terraform plan
+
+# 4. Deploy infrastructure
+terraform apply
+```
+
+## 🏗️ Architecture
+
+### Cluster Components
+- **2 Master Nodes** - K3s servers with embedded etcd (HA: seed + join)
+- **2 Worker Nodes** - K3s agents with workload scheduling
+- **Flannel CNI** - Container networking with VXLAN backend
+- **CIS Hardening** - Security policies and Pod Security Standards
+
+### Network Configuration
+- **Pod CIDR:** `10.42.0.0/16` (IPv4), `2001:cafe:42::0/48` (IPv6)
+  - Each node gets a `/64` subnet carved from the `/48` cluster CIDR
+- **Service CIDR:** `10.43.0.0/16` (IPv4), `2001:cafe:43::0/112` (IPv6)
+- **CNI:** Flannel with VXLAN encapsulation
+
+### Security Features
+- **Firewall Management** - Oracle Cloud iptables rules flushed, K3s/Flannel manages networking
+- **Pod Security Standards** - Enforced security policies
+- **CIS Compliance** - Hardened kernel parameters and security settings
+- **Fail2ban** - SSH brute-force protection
+
+## 📁 Project Structure
+
+```
+k3s-cluster-v3/
+├── main.tf                    # Main Terraform configuration
+├── variables.tf               # Terraform variables
+├── terraform.tfvars.example  # Example cluster configuration
+├── env-vars.txt.example      # Example environment variables
+├── deploy-enhanced.sh         # Deployment automation script
+├── scripts/
+│   ├── master1.sh            # Master node initialization
+│   ├── worker1.sh            # Worker node 1 initialization
+│   ├── worker2.sh            # Worker node 2 initialization
+│   └── worker3.sh            # Worker node 3 initialization
+└── README.md                 # This file
+```
+
+## 🔐 Security Considerations
+
+### Firewall Management
+The deployment automatically:
+1. **Flushes Oracle Cloud default iptables rules** that block inter-node communication
+2. **Removes netfilter-persistent package** to prevent rule restoration
+3. **Lets K3s and Flannel manage iptables** completely
+
+### Pod Security Standards
+- **Restricted policy** enforced for most namespaces
+- **Privileged exemptions** for system namespaces
+- **CIS hardening** with secure kernel parameters
+
+### Access Control
+- **SSH key-based authentication** only
+- **Fail2ban protection** against brute-force attacks
+- **Network policies** available through Kubernetes NetworkPolicy API
+
+## 🛠️ Troubleshooting
+
+### Common Issues
+
+#### 1. Firewall Connectivity Problems
+**Problem:** Pods can't connect to services or other nodes
+**Solution:** Ensure Oracle Cloud default firewall rules are flushed:
+```bash
+# On each node:
+sudo iptables -F
+sudo iptables -P INPUT ACCEPT
+sudo iptables -P FORWARD ACCEPT
+sudo iptables -P OUTPUT ACCEPT
+```
+
+#### 2. Flannel Networking Issues
+**Problem:** Flannel pods in CrashLoopBackOff or not ready
+**Solution:** Check Flannel pods and ensure VXLAN backend is configured:
+```bash
+kubectl get pods -n kube-system -l app=flannel
+# Check logs: kubectl logs -n kube-system -l app=flannel
+```
+
+#### 3. Terraform State Issues
+**Problem:** Terraform state errors
+**Solution:** The state is stored locally (`terraform.tfstate`). Ensure the OCI
+credentials are correct and your API key has the required permissions:
+```bash
+oci iam compartment list --compartment-id $TF_VAR_compartment_id
+```
+
+### Verification Commands
+```bash
+# Check cluster status
+kubectl get nodes -o wide
+
+# Check Flannel status
+kubectl get pods -n kube-system -l app=flannel
+
+# Check networking
+kubectl get daemonsets -n kube-system
+
+# Check pod connectivity
+kubectl run test-pod --image=busybox --rm -it -- sh
+```
+
+## 🔄 Maintenance
+
+### Cluster Updates
+```bash
+# Update K3s version (on master and workers)
+curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.28.4+k3s1" sh -
+
+# Flannel is automatically updated with K3s
+```
+
+### Backup and Recovery
+```bash
+# Backup K3s
+sudo systemctl stop k3s
+sudo tar czf k3s-backup.tar.gz /var/lib/rancher/k3s/
+sudo systemctl start k3s
+
+# Restore from backup
+sudo systemctl stop k3s
+sudo rm -rf /var/lib/rancher/k3s/
+sudo tar xzf k3s-backup.tar.gz -C /
+sudo systemctl start k3s
+```
+
+## 🗑️ Cleanup
+
+### Destroy Cluster
+```bash
+# Using deployment script
+./deploy-enhanced.sh
+# Select option: destroy
+
+# Manual cleanup
+source env-vars.txt
+terraform destroy
+```
+
+## 📚 References
+
+- [K3s Documentation](https://docs.k3s.io/)
+- [Flannel Documentation](https://github.com/flannel-io/flannel)
+- [Oracle Cloud Infrastructure Documentation](https://docs.oracle.com/en-us/iaas/)
+- [CIS Kubernetes Benchmark](https://www.cisecurity.org/benchmark/kubernetes)
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## ⚠️ Disclaimer
+
+This project creates real cloud infrastructure that will incur costs. Always review and understand the resources being created before deployment. Monitor your Oracle Cloud billing to avoid unexpected charges.

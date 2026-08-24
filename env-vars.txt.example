@@ -1,0 +1,24 @@
+# OCI (Oracle Cloud Infrastructure) configuration for k3s-cluster-v3
+# Copy this file to env-vars.txt and fill in your values.
+# NEVER commit env-vars.txt — it contains credentials.
+
+# OCI API authentication (create an API key in OCI IAM)
+export TF_VAR_tenancy_ocid="ocid1.tenancy.oc1..your-tenancy-id"
+export TF_VAR_user_ocid="ocid1.user.oc1..your-user-id"
+export TF_VAR_fingerprint="your:key:fingerprint"
+export TF_VAR_private_key_path="/path/to/your/oci-api-key.pem"
+export TF_VAR_region="sa-saopaulo-1"
+export TF_VAR_compartment_id="ocid1.compartment.oc1..your-compartment-id"
+
+# SSH public key for instance access
+export TF_VAR_ssh_public_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... your-public-key"
+
+# K3s join token — generate one with: openssl rand -base64 24
+export TF_VAR_k3s_join_token="your-secure-k3s-join-token"
+
+# Usage:
+#   1. cp env-vars.txt.example env-vars.txt
+#   2. Fill in your values
+#   3. source env-vars.txt
+#   4. cp terraform.tfvars.example terraform.tfvars and adjust
+#   5. terraform init && terraform apply
