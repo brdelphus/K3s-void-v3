@@ -15,22 +15,86 @@ A production-ready K3s Kubernetes cluster deployment on Oracle Cloud Infrastruct
 ## 📋 Prerequisites
 
 ### Required Tools
-- [Terraform](https://www.terraform.io/) >= 1.0
-- [Oracle Cloud CLI](https://docs.oracle.com/en-us/iaas/Content/API/Concepts/cliconcepts.htm)
-- SSH client
+- **Terraform** >= 1.0 — `sudo xbps-install -S terraform` (Void Linux) or download from [developer.hashicorp.com/terraform/install](https://developer.hashicorp.com/terraform/install)
+- **OCI CLI** (`oci`) — `pip3 install --user oci-cli` or the official installer: [docs.oracle.com OCI CLI install](https://docs.oracle.com/en-us/iaas/Content/API/SDKDocs/cliinstall.htm)
+- **jq** — `sudo xbps-install -S jq` (used by `deploy-enhanced.sh`)
+- **SSH client** and **git**
+
+The OCI **provider** binary needs no manual install: `terraform init` downloads the `oracle/oci` provider into `.terraform/providers/` (gitignored, never committed).
 
 ### Oracle Cloud Infrastructure Setup
-1. **OCI Account** with sufficient compute quotas
-2. **VCN and Subnet** (created by this module; optionally peer with another VCN)
-3. **API Keys** configured for Terraform
+1. **OCI account** with compute quota for `VM.Standard.A1.Flex` (ARM, Always Free eligible)
+2. **VCN and Subnet** — created by this module; optionally peer with another VCN (see `delphus_vcn_cidr` / `delphus_lpg_id` in `terraform.tfvars`)
+3. **API key** for Terraform — see [Credentials](#credentials)
+4. **Void Linux image** imported into your tenancy — see [Void Linux image](#void-linux-image)
+
+## 🔑 Credentials
+
+All OCI credentials are read from `env-vars.txt` (never committed). Create it from the example:
+
+```bash
+cp env-vars.txt.example env-vars.txt
+```
+
+### OCI API key (for Terraform)
+1. In the OCI Console: user menu (top-right) → **My profile** → **API keys** → **Add API key**
+2. Either generate a new key pair (download the private key) or upload your own public key
+3. The console then shows the **fingerprint** — copy it
+4. Fill in the fields below
+
+Where each value lives in the console:
+- `TF_VAR_tenancy_ocid` — Console → Tenancy details (OCID)
+- `TF_VAR_user_ocid` — Console → My profile (OCID)
+- `TF_VAR_fingerprint` — My profile → API keys (the one you just added)
+- `TF_VAR_private_key_path` — path to the downloaded private key, e.g. `$HOME/.oci/oci_api_key.pem`
+- `TF_VAR_region` — your region, e.g. `sa-saopaulo-1`
+- `TF_VAR_compartment_id` — Console → Identity → Compartments (OCID)
+
+### SSH key (node access)
+```bash
+ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519
+export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
+```
+
+### K3s join token
+```bash
+export TF_VAR_k3s_join_token="$(openssl rand -base64 24)"
+```
+The same token is used by the seed master and by every node that joins it.
+
+### Full env-vars.txt example
+```bash
+export TF_VAR_tenancy_ocid="ocid1.tenancy.oc1..your-tenancy-id"
+export TF_VAR_user_ocid="ocid1.user.oc1..your-user-id"
+export TF_VAR_fingerprint="ab:cd:ef:12:34:56:78:90:ab:cd:ef:12:34:56:78:90"
+export TF_VAR_private_key_path="$HOME/.oci/oci_api_key.pem"
+export TF_VAR_region="sa-saopaulo-1"
+export TF_VAR_compartment_id="ocid1.compartment.oc1..your-compartment-id"
+export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
+export TF_VAR_k3s_join_token="$(openssl rand -base64 24)"
+```
+
+## 🖼️ Void Linux image
+
+This module boots **Void Linux** (ARM64) instances. The image is built and maintained by the [`void-oci`](https://github.com/brdelphus/void-oci) project — a reproducible Void Linux QCOW2/OCI image with cloud-init, OpenRC and Oracle cloud agent integration.
+
+To use a custom build:
+1. Build the image with `void-oci` (e.g. `./build.sh aarch64`)
+2. Upload the QCOW2 to OCI Object Storage and import it as a custom image
+3. Add ARM shape compatibility for the imported image:
+   `oci compute image-shape-compatibility-entry add --image-id <ocid> --shape-name VM.Standard.A1.Flex`
+4. Set `void_oci_image_display_name` in `terraform.tfvars` to the imported image's display name (e.g. `void-oci-aarch64-20260822`)
+
+If `void_oci_image_display_name` is left empty, the module falls back to a stock Ubuntu image.
 
 ## 🔧 Configuration
 
 ### 1. Environment Variables
-Copy and configure your OCI credentials:
+Copy and configure your OCI credentials (see [Credentials](#credentials) for how to generate each one):
 ```bash
 cp env-vars.txt.example env-vars.txt
-# Edit env-vars.txt with your actual OCI credentials
+# Edit env-vars.txt with your actual OCI credentials, then:
+source env-vars.txt
 ```
 
 Required variables:

@@ -1,20 +1,22 @@
 # OCI (Oracle Cloud Infrastructure) configuration for k3s-cluster-v3
 # Copy this file to env-vars.txt and fill in your values.
 # NEVER commit env-vars.txt — it contains credentials.
+# See README "Credentials" for step-by-step on generating each value.
 
-# OCI API authentication (create an API key in OCI IAM)
-export TF_VAR_tenancy_ocid="ocid1.tenancy.oc1..your-tenancy-id"
-export TF_VAR_user_ocid="ocid1.user.oc1..your-user-id"
-export TF_VAR_fingerprint="your:key:fingerprint"
-export TF_VAR_private_key_path="/path/to/your/oci-api-key.pem"
-export TF_VAR_region="sa-saopaulo-1"
-export TF_VAR_compartment_id="ocid1.compartment.oc1..your-compartment-id"
+# --- OCI API authentication (create an API key in OCI IAM:
+#     Console → user menu → My profile → API keys → Add API key) ---
+export TF_VAR_tenancy_ocid="ocid1.tenancy.oc1..your-tenancy-id"        # Console → Tenancy details
+export TF_VAR_user_ocid="ocid1.user.oc1..your-user-id"                 # Console → My profile
+export TF_VAR_fingerprint="ab:cd:ef:12:34:56:78:90:ab:cd:ef:12:34:56:78:90"  # shown after adding the API key
+export TF_VAR_private_key_path="$HOME/.oci/oci_api_key.pem"            # downloaded key when you created it
+export TF_VAR_region="sa-saopaulo-1"                                   # your region
+export TF_VAR_compartment_id="ocid1.compartment.oc1..your-compartment-id"   # Console → Identity → Compartments
 
-# SSH public key for instance access
-export TF_VAR_ssh_public_key="ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAA... your-public-key"
+# --- SSH public key for instance access (ssh-keygen -t ed25519) ---
+export TF_VAR_ssh_public_key="$(cat ~/.ssh/id_ed25519.pub)"
 
-# K3s join token — generate one with: openssl rand -base64 24
-export TF_VAR_k3s_join_token="your-secure-k3s-join-token"
+# --- K3s join token (openssl rand -base64 24) — same token on seed and joins ---
+export TF_VAR_k3s_join_token="$(openssl rand -base64 24)"
 
 # Usage:
 #   1. cp env-vars.txt.example env-vars.txt

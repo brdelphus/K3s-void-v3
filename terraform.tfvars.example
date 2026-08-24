@@ -49,6 +49,8 @@ delphus_vcn_cidr = "10.99.0.0/16"
 delphus_lpg_id   = "ocid1.localpeeringgateway.oc1..your-lpg-id"
 
 # Void Linux OCI image imported into your tenancy (display name of the build)
+# Image is built with the void-oci project: https://github.com/brdelphus/void-oci
+# (import QCOW2 → custom image → add VM.Standard.A1.Flex shape compatibility)
 void_oci_image_display_name = "void-oci-aarch64-20260822"
 
 # First master (seed) address: the other masters and workers join it
