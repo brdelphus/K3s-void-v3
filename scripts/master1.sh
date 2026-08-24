@@ -716,6 +716,41 @@ spec:
     port: 443
   version: v1beta1
   versionPriority: 100
+---
+# Extra RBAC (fix 24/aug): the metrics-server aggregator does
+# get/list/watch on the extension-apiserver-authentication configmap
+# (kube-system); the k3s built-in addon granted that via its own role,
+# the custom manifest did not -> panic "unable to load configmap based
+# request-header-client-ca-file" + apiservice FailedDiscoveryCheck.
+# Role scoped to kube-system only.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: metrics-server-auth-reader
+  namespace: kube-system
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: metrics-server-auth-reader
+  namespace: kube-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: metrics-server-auth-reader
+subjects:
+- kind: ServiceAccount
+  name: metrics-server
+  namespace: kube-system
 MSEOF
 
 export INSTALL_K3S_VERSION='v1.36.2+k3s1'
