@@ -1,0 +1,61 @@
+# Upgrade Plans for k3s-v3 (Void Linux, ARM64) using system-upgrade-controller.
+#
+# Differences vs the stock k3s plans:
+#   - image: ghcr.io/brdelphus/k3s-upgrade-void (adapted upgrade.sh: host mount check,
+#     dynamic binary fallback, post-kill respawn check)
+#   - channel: stable instead of a pinned version — the controller resolves the
+#     latest stable k3s release automatically (nothing hardcoded)
+#   - concurrency: 1 on agents too (the v3 workers host prometheus/loki stateful
+#     workloads; one node at a time, always)
+#   - server plan has NO drain (2 CPs with etcd, quorum 2/2 — restarting one CP
+#     drops the API ~40s, which is expected and acceptable)
+#   - agent plan drains with force (DaemonSets + debug pods without controllers)
+#
+# Apply: kubectl --kubeconfig <kubeconfig> -f plans-void.yaml apply
+# Watch: kubectl --kubeconfig <kubeconfig> get plans -n system-upgrade -o wide
+---
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-server
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  channel: https://update.k3s.io/v1-release/channels/stable
+  nodeSelector:
+    matchExpressions:
+    - key: node-role.kubernetes.io/control-plane
+      operator: In
+      values:
+      - "true"
+  serviceAccountName: system-upgrade
+  upgrade:
+    image: ghcr.io/brdelphus/k3s-upgrade-void
+---
+apiVersion: upgrade.cattle.io/v1
+kind: Plan
+metadata:
+  name: k3s-agent
+  namespace: system-upgrade
+spec:
+  concurrency: 1
+  cordon: true
+  channel: https://update.k3s.io/v1-release/channels/stable
+  nodeSelector:
+    matchExpressions:
+    - key: node-role.kubernetes.io/control-plane
+      operator: NotIn
+      values:
+      - "true"
+  prepare:
+    args:
+    - prepare
+    - k3s-server
+    image: ghcr.io/brdelphus/k3s-upgrade-void
+  drain:
+    force: true
+    skipWaitForDeleteTimeout: 60
+  serviceAccountName: system-upgrade
+  upgrade:
+    image: ghcr.io/brdelphus/k3s-upgrade-void
