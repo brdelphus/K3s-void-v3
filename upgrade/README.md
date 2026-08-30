@@ -31,8 +31,16 @@ are:
 
 ### 1. Build and publish the custom image
 
-Tag must match the k3s release being targeted (`v<ver>-k3s1`). Requires a GHCR token
-with `write:packages` (`gh auth refresh -s write:packages` if missing).
+**Via GitHub Actions (recommended)** — builds linux/amd64 + linux/arm64 and pushes to
+GHCR:
+
+```sh
+gh workflow run build-upgrade-image.yml -f version=v1.36.4-k3s1
+# or: Actions tab → build-upgrade-image → Run workflow → version input
+```
+
+**Manually** — tag must match the k3s release being targeted (`v<ver>-k3s1`). Requires a
+GHCR token with `write:packages` (`gh auth refresh -s write:packages` if missing).
 
 ```sh
 cd upgrade
