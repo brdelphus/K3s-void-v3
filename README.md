@@ -182,6 +182,12 @@ k3s-void-v3/
 │   ├── worker1.sh            # Worker node 1 initialization
 │   ├── worker2.sh            # Worker node 2 initialization
 │   └── worker3.sh            # Worker node 3 initialization
+├── upgrade/
+│   ├── upgrade.sh            # Adapted upgrade script (Void, no systemd)
+│   ├── Dockerfile            # k3s-upgrade-void image build
+│   ├── suc-manifest.yaml     # system-upgrade-controller manifest
+│   ├── plans-void.yaml       # Example server/agent upgrade plans
+│   └── README.md             # Upgrade workflow docs
 └── README.md                 # This file
 ```
 
@@ -252,25 +258,33 @@ kubectl run test-pod --image=busybox --rm -it -- sh
 ## 🔄 Maintenance
 
 ### Cluster Updates
-```bash
-# Update K3s version (on master and workers)
-curl -sfL https://get.k3s.io | INSTALL_K3S_VERSION="v1.28.4+k3s1" sh -
+Automated via the [system-upgrade-controller](upgrade/) — no manual steps per node. On a new stable K3s release:
 
-# Flannel is automatically updated with K3s
+```bash
+# 1. Build & push the upgrade image (amd64 + arm64)
+gh workflow run build-upgrade-image.yml -f version=v<NEW_VERSION>-k3s1
+
+# 2. Apply the upgrade plans (see upgrade/plans-void.yaml)
+kubectl apply -f upgrade/plans-void.yaml
 ```
+
+The controller cordons the control planes and drains workers one by one, rolling the cluster to the target version. See [`upgrade/README.md`](upgrade/) for the full workflow, gotchas and rollback notes.
 
 ### Backup and Recovery
 ```bash
-# Backup K3s
-sudo systemctl stop k3s
+# Etcd snapshot (HA embedded etcd) — run on a server node
+sudo k3s etcd-snapshot save --dir /var/lib/rancher/k3s/server/db/snapshots/
+
+# Full backup (OpenRC on Void)
+sudo rc-service k3s stop
 sudo tar czf k3s-backup.tar.gz /var/lib/rancher/k3s/
-sudo systemctl start k3s
+sudo rc-service k3s start
 
 # Restore from backup
-sudo systemctl stop k3s
+sudo rc-service k3s stop
 sudo rm -rf /var/lib/rancher/k3s/
 sudo tar xzf k3s-backup.tar.gz -C /
-sudo systemctl start k3s
+sudo rc-service k3s start
 ```
 
 ## 🗑️ Cleanup
@@ -289,6 +303,7 @@ terraform destroy
 ## 📚 References
 
 - [K3s Documentation](https://docs.k3s.io/)
+- [K3s Automated Upgrades](https://docs.k3s.io/upgrades/automated)
 - [Flannel Documentation](https://github.com/flannel-io/flannel)
 - [Oracle Cloud Infrastructure Documentation](https://docs.oracle.com/en-us/iaas/)
 - [CIS Kubernetes Benchmark](https://www.cisecurity.org/benchmark/kubernetes)
