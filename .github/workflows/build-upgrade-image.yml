@@ -72,6 +72,20 @@ jobs:
             ${{ env.IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.IMAGE }}:latest
 
+      - name: Notify Telegram (new image published)
+        if: steps.check.outputs.exists == 'false'
+        env:
+          TG_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TG_CHAT: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TAG: ${{ steps.version.outputs.tag }}
+        run: |
+          MSG="🚀 Nova imagem k3s-upgrade-void <b>${TAG}</b> publicada (amd64 + arm64) — o SUC vai rolar o cluster sozinho"
+          curl -s -o /dev/null -w "telegram: HTTP %{http_code}\n" \
+            --data-urlencode "chat_id=${TG_CHAT}" \
+            --data-urlencode "text=${MSG}" \
+            --data-urlencode "parse_mode=HTML" \
+            "https://api.telegram.org/bot${TG_TOKEN}/sendMessage"
+
       - name: Prune old versions (keep newest ${{ env.KEEP }})
         env:
           GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
