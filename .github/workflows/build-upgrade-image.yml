@@ -1,19 +1,18 @@
-name: build-upgrade-image
-
-# Builds and publishes the k3s-upgrade-void image (linux/amd64 + linux/arm64)
-# to ghcr.io/brdelphus/k3s-upgrade-void, tagged with the target k3s version and latest.
-#
-# Trigger manually with the target k3s release, e.g.:
-#   gh workflow run build-upgrade-image.yml -f version=v1.36.5-k3s1
-# or via the Actions tab → "Run workflow" → version input.
+name: Build k3s-upgrade-void image
 
 on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Target k3s release version (e.g. v1.36.4-k3s1)'
-        required: true
-        default: 'v1.36.4-k3s1'
+        description: 'K3s version (e.g. v1.36.5-k3s1). Leave empty to build the latest stable release'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 */6 * * *' # every 6h — picks up new k3s releases automatically
+
+env:
+  IMAGE: ghcr.io/brdelphus/k3s-upgrade-void
+  KEEP: 4 # number of version tags to keep; older ones are pruned
 
 jobs:
   build:
@@ -36,18 +35,64 @@ jobs:
         with:
           registry: ghcr.io
           username: brdelphus
-          # PAT / OAuth token with write:packages (GITHUB_TOKEN is read-only for
-          # user-namespace packages). Set via: gh secret set GHCR_TOKEN --body "$(gh auth token)"
           password: ${{ secrets.GHCR_TOKEN }}
 
+      - name: Resolve K3s version
+        id: version
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+        run: |
+          if [ -n "$INPUT_VERSION" ]; then
+            VERSION="$INPUT_VERSION"
+          else
+            VERSION=$(curl -s https://api.github.com/repos/k3s-io/k3s/releases/latest | jq -r .tag_name)
+          fi
+          TAG=${VERSION/+/-}
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: Check if image already exists
+        id: check
+        run: |
+          if docker manifest inspect "$IMAGE:${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Build and push
+        if: steps.check.outputs.exists == 'false'
         uses: docker/build-push-action@v6
         with:
-          context: upgrade
+          context: ./upgrade
+          file: ./upgrade/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            ghcr.io/brdelphus/k3s-upgrade-void:${{ inputs.version }}
-            ghcr.io/brdelphus/k3s-upgrade-void:latest
-          build-args: |
-            K3S_VERSION=${{ inputs.version }}
+            ${{ env.IMAGE }}:${{ steps.version.outputs.tag }}
+            ${{ env.IMAGE }}:latest
+
+      - name: Prune old versions (keep newest ${{ env.KEEP }})
+        env:
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
+        run: |
+          set -euo pipefail
+          PKG=$(basename "$IMAGE")
+          gh api "user/packages/container/$PKG/versions" --paginate > /tmp/versions.json
+          jq -c --argjson keep "$KEEP" '
+            [ .[]
+              | select((.metadata.container.tags // []) | length > 0)
+              | select(any(.metadata.container.tags[]; test("^v[0-9]+\\.[0-9]+\\.[0-9]+-k3s[0-9]+$")))
+            ]
+            | sort_by(.created_at)
+            | reverse
+            | .[$keep:] | .[]
+          ' /tmp/versions.json > /tmp/prune.json
+          COUNT=$(wc -l < /tmp/prune.json)
+          echo "Pruning $COUNT old version(s)..."
+          while read -r v; do
+            ID=$(echo "$v" | jq -r .id)
+            echo "  deleting version $ID"
+            gh api -X DELETE "user/packages/container/$PKG/versions/$ID"
+          done < /tmp/prune.json
+          echo "Done. Keeping the $KEEP newest version tag(s)."

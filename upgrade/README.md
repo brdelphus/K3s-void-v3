@@ -101,6 +101,16 @@ kubectl -n system-upgrade get pod -o name | grep apply-k3s \
 
 ## Next upgrade (when a new stable release lands)
 
+### Fully automatic (recommended)
+
+The [`build-upgrade-image.yml`](../.github/workflows/build-upgrade-image.yml) workflow
+checks for new stable k3s releases every 6h. When a release is detected, it builds
+and pushes the image (amd64 + arm64) and prunes old version tags, keeping only the
+`KEEP` (default 4) newest ones. Nothing to do — the controller picks up the new
+channel version and runs the plans automatically.
+
+### Manual
+
 1. Build + push the image with the new tag (step 1, swap the version in the tag).
 2. Done — the controller picks up the new channel version and runs the plans
    automatically. No plan edits needed.
@@ -109,7 +119,8 @@ kubectl -n system-upgrade get pod -o name | grep apply-k3s \
 
 - `spec.channel` in a Plan must be a **URL** (`https://update.k3s.io/v1-release/channels/stable`),
   not a bare name — `stable` alone fails with "unsupported protocol scheme".
-- The GHCR token needs `write:packages`; the plain docker-config token is read-only for
-  packages.
+- The GHCR token needs `write:packages` to push and `delete:packages` to prune old
+  versions (both granted by the `gh auth refresh` device flow); the plain docker-config
+  token is read-only for packages.
 - A private GHCR package requires `imagePullSecrets` on the `system-upgrade` service
   account, otherwise upgrade pods fail with `ImagePullBackOff`.
