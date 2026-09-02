@@ -180,7 +180,14 @@ kill_k3s_process() {
     NEW_PID=$(ps -ef | grep -E "( |/)k3s .*(server|agent)" | grep -E -v "(init|grep|channelserver|supervise-daemon)" | awk '{print $2}' | head -1)
     if [ -z "$NEW_PID" ] || [ "$NEW_PID" = "$K3S_PID" ]; then
       info "Supervisor did not respawn k3s; attempting rc-service restart"
-      chroot /host sh -c 'rc-service k3s restart 2>/dev/null || rc-service k3s-agent restart 2>/dev/null || exit 0'
+      # [VOID][fix 1/set/2026] chroot NÃO troca o mount namespace: rodar o
+      # rc-service direto no chroot faz o serviço nascer no mount ns do pod SUC
+      # (clone, / private) -> hostPath/mountPropagation quebra para pods novos
+      # (pivot_root .: invalid argument). Entrar no mount ns do init (PID 1,
+      # visível via hostPID) ANTES do chroot: serviço nasce no ns do init com /
+      # shared, igual ao boot. No-op quando o init.d já tem o k3s-mountns-guard.
+      nsenter -t 1 -m -- chroot /host sh -c 'rc-service k3s restart 2>/dev/null || rc-service k3s-agent restart 2>/dev/null || exit 0' 2>/dev/null \
+        || chroot /host sh -c 'rc-service k3s restart 2>/dev/null || rc-service k3s-agent restart 2>/dev/null || exit 0'
       sleep 15
     fi
 }

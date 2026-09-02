@@ -120,6 +120,21 @@ for i in $(seq 1 5); do
     sleep 15
 done
 
+# [fix 1/set/2026] Hardening do init.d do k3s-agent (marca k3s-mountns-guard):
+# o serviço passa a rodar SEMPRE no mount ns do init via `nsenter -t 1 -m`
+# (no-op no boot — validado em node real 1/set/2026: pid no ns do init com
+# shared). Sem isso, um restart vindo de contexto com mount ns separado — ex:
+# upgrade k3s via chroot de pod (kubectl debug/SUC roda o rc-service DENTRO do
+# ns do container) — nascia o k3s-agent num ns clone com / private e hostPath
+# de pods novos quebrava (node-exporter/metrics-server, pivot_root do runc;
+# pods antigos seguiam Running). Formato CANÔNICO do openrc: command = binário
+# limpo, prefixo nsenter vai no command_args (command com espaços quebra o
+# supervise-daemon).
+if ! grep -q 'k3s-mountns-guard' /etc/init.d/k3s-agent 2>/dev/null; then
+    sed -i 's|^command="/usr/local/bin/k3s"$|command="/usr/bin/nsenter"  # k3s-mountns-guard|; s|^command_args="agent|command_args="-t 1 -m -- /usr/local/bin/k3s agent|' /etc/init.d/k3s-agent
+    echo "init.d k3s-agent blindado com k3s-mountns-guard"
+fi
+
 if [ "$JOIN_MODE" = "test" ]; then
     echo "=== MODO TESTE: k3s instalado (SKIP_START) — join NÃO executado, master não contatado ==="
     k3s --version 2>/dev/null | head -1
