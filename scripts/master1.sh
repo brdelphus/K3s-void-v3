@@ -753,7 +753,8 @@ subjects:
   namespace: kube-system
 MSEOF
 
-export INSTALL_K3S_VERSION='v1.36.2+k3s1'
+# Sem INSTALL_K3S_VERSION o install.sh do k3s pega a stable mais recente
+# (canal default; mesma política do SUC — nada hardcoded).
 if [ "$JOIN_MODE" = "test" ]; then
     # MODO TESTE: sem K3S_URL e sem start — o k3s instala mas NUNCA
     # sobe (nenhum cluster criado/contatado)
@@ -770,7 +771,7 @@ fi
 
 # Retry do download/install (a rede pode oscilar no boot — lição 22/ago)
 T_K3S=$(date +%s)
-step "K3S_INSTALL_INICIO — baixando get.k3s.io (v1.36.2+k3s1, delta ext4→install $(( T_K3S - T_EXT ))s)"
+step "K3S_INSTALL_INICIO — baixando get.k3s.io (stable mais recente, delta ext4→install $(( T_K3S - T_EXT ))s)"
 for i in $(seq 1 5); do
     curl -sfL https://get.k3s.io | sh - && break
     echo "install k3s falhou ($${i}/5) — retry em 15s"

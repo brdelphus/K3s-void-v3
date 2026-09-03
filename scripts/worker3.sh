@@ -101,7 +101,8 @@ kube-proxy-arg:
 - --metrics-bind-address=0.0.0.0
 K3SCONFIG
 
-export INSTALL_K3S_VERSION='v1.36.2+k3s1'
+# Sem INSTALL_K3S_VERSION o install.sh do k3s pega a stable mais recente
+# (canal default; mesma política do SUC — nada hardcoded).
 if [ "$JOIN_MODE" = "test" ]; then
     # MODO TESTE: sem K3S_URL e sem start — o k3s instala mas NUNCA
     # contata o master (etcd do cluster intocado)
