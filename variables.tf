@@ -385,17 +385,6 @@ variable "k3s_server_url" {
   type        = string
 }
 
-# --- VCN peering (opcional) ---
-variable "delphus_vcn_cidr" {
-  description = "CIDR da VCN remota para peering"
-  type        = string
-}
-
-variable "delphus_lpg_id" {
-  description = "OCID do LPG da VCN remota para conectar o peering"
-  type        = string
-}
-
 variable "lpg_display_name" {
   description = "Display name do LPG local"
   type        = string

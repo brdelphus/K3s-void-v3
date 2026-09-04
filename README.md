@@ -24,13 +24,13 @@ The OCI **provider** binary needs no manual install: `terraform init` downloads 
 
 ### Oracle Cloud Infrastructure Setup
 1. **OCI account** with compute quota for `VM.Standard.A1.Flex` (ARM, Always Free eligible)
-2. **VCN and Subnet** — created by this module; optionally peer with another VCN (see `delphus_vcn_cidr` / `delphus_lpg_id` in `terraform.tfvars`)
+2. **VCN and Subnet** — created by this module
 3. **API key** for Terraform — see [Credentials](#credentials)
 4. **Void Linux image** imported into your tenancy — see [Void Linux image](#void-linux-image)
 
 ## 🔑 Credentials
 
-All OCI credentials are read from `env-vars.txt` (never committed). Create it from the example:
+All OCI credentials are read from `env-vars.txt`. Create it from the example:
 
 ```bash
 cp env-vars.txt.example env-vars.txt

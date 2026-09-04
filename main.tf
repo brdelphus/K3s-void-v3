@@ -64,13 +64,6 @@ resource "oci_core_internet_gateway" "k3s_igw" {
   enabled        = true
 }
 
-# NOTE (22/ago): LPG/peering REMOVIDO — o cluster v3 é STANDALONE (2 masters
-# + 2 workers só entre eles, sem contato com o cluster principal). O peering
-# antigo ficou preso do lado remoto ("has already been connected") e travava
-# o apply. Se um dia integrar com o cluster principal: desconectar o peering
-# velho no lado remoto primeiro, depois re-adicionar o resource
-# (var.delphus_lpg_id e a rota do peer abaixo).
-
 resource "oci_core_default_route_table" "k3s_rt" {
   manage_default_resource_id = oci_core_vcn.k3s_vcn.default_route_table_id
   display_name               = var.route_table_display_name
@@ -187,13 +180,6 @@ resource "oci_core_security_list" "k3s_seclist" {
     protocol    = "all"
     source      = var.subnet_cidr
     description = "Allow all TCP/UDP traffic between K3s nodes (IPv4)"
-  }
-
-  # All traffic from the peer VCN via peering
-  ingress_security_rules {
-    protocol    = "all"
-    source      = var.delphus_vcn_cidr
-    description = "Allow all traffic from peer VCN (peering)"
   }
 
   # All traffic allowed between K3s nodes in subnet (IPv6)
