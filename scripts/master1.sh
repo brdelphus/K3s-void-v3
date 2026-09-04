@@ -141,7 +141,7 @@ plugins:
     exemptions:
       usernames: []
       runtimeClasses: []
-      namespaces: [kube-system, monitoring, cis-operator-system, ingress-nginx, dns, metallb-system, cert-manager, nextcloud, velero, mail]
+      namespaces: [kube-system, monitoring, cis-operator-system, traefik, dns, metallb-system, cert-manager, nextcloud, velero, mail]
 - name: EventRateLimit
   path: /var/lib/rancher/k3s/server/eventconfig.yaml
 PSAEOF

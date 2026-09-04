@@ -442,7 +442,7 @@ variable "psa_exempted_namespaces" {
   type        = list(string)
   default = [
     "kube-system",
-    "ingress-nginx",
+    "traefik",
     "monitoring",
     "cert-manager",
     "nextcloud",
