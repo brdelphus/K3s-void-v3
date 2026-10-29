@@ -3,8 +3,10 @@
 # Differences vs the stock k3s plans:
 #   - image: ghcr.io/brdelphus/k3s-upgrade-void (adapted upgrade.sh: host mount check,
 #     dynamic binary fallback, post-kill respawn check)
-#   - channel: stable instead of a pinned version — the controller resolves the
-#     latest stable k3s release automatically (nothing hardcoded)
+#   - channel: the v1.37 line, NOT "stable" — the k3s "stable" channel lags behind
+#     (it pointed at v1.36.5 while v1.37.1 was already out, so plans resolved to a
+#     DOWNGRADE). The per-minor channel tracks the newest patch of that line and
+#     keeps the version unpinned (nothing hardcoded). Bump the channel on a new minor.
 #   - concurrency: 1 on agents too (the v3 workers host prometheus/loki stateful
 #     workloads; one node at a time, always)
 #   - server plan has NO drain (2 CPs with etcd, quorum 2/2 — restarting one CP
@@ -22,7 +24,7 @@ metadata:
 spec:
   concurrency: 1
   cordon: true
-  channel: https://update.k3s.io/v1-release/channels/stable
+  channel: https://update.k3s.io/v1-release/channels/v1.37
   nodeSelector:
     matchExpressions:
     - key: node-role.kubernetes.io/control-plane
@@ -41,7 +43,7 @@ metadata:
 spec:
   concurrency: 1
   cordon: true
-  channel: https://update.k3s.io/v1-release/channels/stable
+  channel: https://update.k3s.io/v1-release/channels/v1.37
   nodeSelector:
     matchExpressions:
     - key: node-role.kubernetes.io/control-plane
