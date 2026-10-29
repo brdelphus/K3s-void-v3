@@ -68,6 +68,11 @@ jobs:
           file: ./upgrade/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
+          # CRITICAL: without this the Dockerfile falls back to its ARG default
+          # (v1.36.4-k3s1) and every image ships a stale /opt/k3s binary — the
+          # upgrade job then aborts with "Current k3s version ... is higher than".
+          build-args: |
+            K3S_VERSION=${{ steps.version.outputs.tag }}
           tags: |
             ${{ env.IMAGE }}:${{ steps.version.outputs.tag }}
             ${{ env.IMAGE }}:latest

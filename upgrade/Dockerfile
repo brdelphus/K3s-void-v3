@@ -5,10 +5,15 @@
 #
 # Build locally (version tag must match the k3s release, e.g. v1.36.4-k3s1):
 #   sudo HOME=$HOME docker buildx build --platform linux/amd64,linux/arm64 \
+#     --build-arg K3S_VERSION=v1.36.4-k3s1 \
 #     -t ghcr.io/brdelphus/k3s-upgrade-void:v1.36.4-k3s1 \
 #     -t ghcr.io/brdelphus/k3s-upgrade-void:latest --push .
 # Or use the GitHub Actions workflow (.github/workflows/build-upgrade-image.yml).
-ARG K3S_VERSION=v1.36.4-k3s1
+#
+# K3S_VERSION has NO default on purpose: an empty value makes FROM resolve to an
+# invalid reference and the build fails loudly. A hardcoded default here once made
+# every published image ship a stale /opt/k3s binary.
+ARG K3S_VERSION
 FROM rancher/k3s-upgrade:${K3S_VERSION}
 COPY upgrade.sh /bin/upgrade.sh
 RUN chmod +x /bin/upgrade.sh
