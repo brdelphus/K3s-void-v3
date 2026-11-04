@@ -51,7 +51,10 @@ docker buildx build --builder void-builder --platform linux/amd64,linux/arm64 \
   -t ghcr.io/brdelphus/k3s-upgrade-void:latest --push .
 ```
 
-> The package is **private** — the cluster needs a pull secret (step 3).
+> The package is **public** — anyone can pull it, no `imagePullSecrets` needed. It is public
+> because the image is pushed with `GITHUB_TOKEN` (packages pushed with it inherit the repo
+> visibility); a PAT-pushed package is born private and the REST API cannot flip container
+> packages to public (`PATCH /user/packages/...` returns 404).
 
 ### 2. Install the controller (once per cluster)
 
@@ -60,7 +63,7 @@ kubectl --kubeconfig ~/.kube/clusters/k3s-v3.conf apply -f suc-manifest.yaml
 kubectl -n system-upgrade get pods     # 1/1 Running
 ```
 
-### 3. Allow the cluster to pull the private image
+### 3. Pull secret — only if the package is ever made private again
 
 ```sh
 kubectl -n system-upgrade create secret docker-registry ghcr-cred \
@@ -68,6 +71,8 @@ kubectl -n system-upgrade create secret docker-registry ghcr-cred \
 kubectl -n system-upgrade patch sa system-upgrade \
   -p '{"imagePullSecrets":[{"name":"ghcr-cred"}]}'
 ```
+
+Not needed today: the package is public.
 
 ### 4. Apply the plans
 
@@ -132,5 +137,8 @@ channel version and runs the plans automatically.
 - The GHCR token needs `write:packages` to push and `delete:packages` to prune old
   versions (both granted by the `gh auth refresh` device flow); the plain docker-config
   token is read-only for packages.
-- A private GHCR package requires `imagePullSecrets` on the `system-upgrade` service
-  account, otherwise upgrade pods fail with `ImagePullBackOff`.
+- If the package ever goes private, `imagePullSecrets` on the `system-upgrade` service account
+  is mandatory, otherwise upgrade pods fail with `ImagePullBackOff`.
+- Package visibility cannot be set through the REST API for container packages (`PATCH
+  /user/packages/container/<name>` -> 404). To make it public: delete the package and repush
+  from Actions logged in with `GITHUB_TOKEN`.
