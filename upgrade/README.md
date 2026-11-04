@@ -24,7 +24,7 @@ are:
 |---|---|
 | `upgrade.sh` | Adapted upgrade script (entrypoint of the custom image) |
 | `Dockerfile` | Builds `ghcr.io/brdelphus/k3s-upgrade-void` on top of the official image |
-| `suc-manifest.yaml` | system-upgrade-controller v0.20.1 (official; namespace already privileged) |
+| `suc-manifest.yaml` | system-upgrade-controller v0.20.2 (official; namespace already privileged) |
 | `plans-void.yaml` | Example server + agent Plans (`channel` resolves the version — no pinning) |
 
 ## Usage
