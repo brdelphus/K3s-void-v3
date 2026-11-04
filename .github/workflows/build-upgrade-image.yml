@@ -34,8 +34,13 @@ jobs:
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: brdelphus
-          password: ${{ secrets.GHCR_TOKEN }}
+          username: ${{ github.actor }}
+          # GITHUB_TOKEN (not the PAT): packages pushed with it inherit the
+          # repository visibility, so a public repo yields a public package.
+          # A PAT-pushed package is born private and the REST API cannot flip
+          # container packages to public (PATCH /user/packages/... -> 404).
+          # The prune step still uses GHCR_TOKEN, which carries delete:packages.
+          password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Resolve K3s version
         id: version
