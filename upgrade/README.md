@@ -117,6 +117,16 @@ channel version and runs the plans automatically.
 
 ## Gotchas
 
+- **The image ships the binary.** `/opt/k3s` inside the image *is* what gets installed on the
+  node (the `[VOID]` fallback only fires when it is missing), so one image per k3s release is
+  mandatory — the cron does it, nobody builds by hand. Consequence: the plan's `channel`
+  and the image's base version must agree. `plans-void.yaml` uses the untagged
+  `:latest`, so the day a new minor lands the cron publishes (say) a `v1.38` base while the
+  plan still resolves `v1.37.x` → the node gets the 1.38 binary and the plan never reports
+  the 1.37 version it waits for. **Bump `spec.channel` to the new minor in the same window
+  as the release**, or pin the plan image to an immutable tag
+  (`image: ...k3s-upgrade-void:v1.37.2-k3s1`) so nothing moves behind your back.
+
 - `spec.channel` in a Plan must be a **URL** (`https://update.k3s.io/v1-release/channels/stable`),
   not a bare name — `stable` alone fails with "unsupported protocol scheme".
 - The GHCR token needs `write:packages` to push and `delete:packages` to prune old
