@@ -53,8 +53,17 @@ jobs:
 
       - name: Check if image already exists
         id: check
+        env:
+          GH_TOKEN: ${{ secrets.GHCR_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
         run: |
-          if docker manifest inspect "$IMAGE:${{ steps.version.outputs.tag }}" >/dev/null 2>&1; then
+          set -euo pipefail
+          PKG=$(basename "$IMAGE")
+          # GHCR API instead of `docker manifest inspect`: the CLI check silently
+          # reported "exists=true" for tags that were never pushed, so the cron
+          # skipped real releases (v1.37.2 sat unbuilt for a day).
+          if gh api "user/packages/container/$PKG/versions" --paginate \
+               --jq '.[].metadata.container.tags[]?' 2>/dev/null | grep -qx "$TAG"; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"
