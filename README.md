@@ -257,14 +257,44 @@ kubectl run test-pod --image=busybox --rm -it -- sh
 
 ## 🔄 Maintenance
 
+### Upgrade image (GHCR)
+
+| | |
+|---|---|
+| Registry | `ghcr.io/brdelphus/k3s-upgrade-void` |
+| Visibility | **public** — anonymous pull, no `imagePullSecrets` in the cluster |
+| Platforms | `linux/amd64`, `linux/arm64` |
+| Tags | `v<k3s-version>-k3s1` + `latest`; the workflow keeps the 4 newest (`KEEP`) |
+| Tags live now (2026-11-04) | `v1.37.2-k3s1` (= `latest`), `v1.37.1-k3s1`, `v1.37.0-k3s1` |
+| Built by | [`build-upgrade-image.yml`](.github/workflows/build-upgrade-image.yml) — cron every 6 h, `workflow_dispatch` with a version input, auto-prune |
+
+The stock `rancher/k3s-upgrade` script already works without systemd (it SIGTERMs k3s and lets
+the host supervisor respawn it), but three fixes are Void-specific and live in
+[`upgrade/upgrade.sh`](upgrade/upgrade.sh): a host-mount guard (a pod can silently get an overlay
+of the container rootfs at `/host` and would "upgrade" the wrong filesystem), a dynamic binary
+fallback, and a post-kill respawn check.
+
+**The image ships the binary.** `/opt/k3s` inside the image is what gets installed on the node, so
+each image is bound to one k3s release — the tag is not decoration. Consequences:
+
+- There is **no chain**: upgrading 1.36.x → 1.37.2 needs only the 1.37.2 image. Older images are
+  never used as a stepping stone.
+- Keeping the last few tags is for **pinning** (`image: ...:v1.37.2-k3s1` in a Plan) and
+  **rollback**, not for the upgrade path.
+- The Plan's `channel` (e.g. `.../v1.37`) and the image's base version must agree. With the
+  untagged `:latest` in `plans-void.yaml`, bump `spec.channel` in the same window as a new minor
+  release, otherwise the node receives the newer binary while the Plan waits for the older version.
+
 ### Cluster Updates
-Automated via the [system-upgrade-controller](upgrade/) — no manual steps per node. On a new stable K3s release:
+Automated via the [system-upgrade-controller](upgrade/) — no manual steps per node. The cron in
+`build-upgrade-image.yml` publishes the matching image within 6 h of a k3s release, so normally
+there is nothing to build by hand:
 
 ```bash
-# 1. Build & push the upgrade image (amd64 + arm64)
+# only if you need a specific version right now
 gh workflow run build-upgrade-image.yml -f version=v<NEW_VERSION>-k3s1
 
-# 2. Apply the upgrade plans (see upgrade/plans-void.yaml)
+# apply the upgrade plans (see upgrade/plans-void.yaml)
 kubectl apply -f upgrade/plans-void.yaml
 ```
 
